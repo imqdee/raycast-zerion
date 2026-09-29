@@ -123,6 +123,34 @@
       "title": "View Market",
       "description": "Real-time market performance",
       "mode": "no-view"
+    },
+    {
+      "name": "top-movers",
+      "subtitle": "Zerion",
+      "title": "View Top Movers",
+      "description": "Daily top gainers and losers",
+      "mode": "no-view"
+    },
+    {
+      "name": "trending-tokens",
+      "subtitle": "Zerion",
+      "title": "View Trending Tokens",
+      "description": "Tokens trending on Zerion right now",
+      "mode": "no-view"
+    },
+    {
+      "name": "stocks",
+      "subtitle": "Zerion",
+      "title": "View Stocks",
+      "description": "Tokenized stocks on Zerion",
+      "mode": "no-view"
+    },
+    {
+      "name": "perps",
+      "subtitle": "Zerion",
+      "title": "View Perps",
+      "description": "Perpetual futures on Zerion",
+      "mode": "no-view"
     }
   ],
   "tools": [
