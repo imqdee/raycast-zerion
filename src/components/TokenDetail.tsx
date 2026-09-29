@@ -178,9 +178,15 @@ export function TokenDetail({
       price != null && relativeChange != null
         ? { absolute: price - price / (1 + relativeChange / 100), relative: relativeChange }
         : null;
-    const image = renderTokenCard({ theme: environment.appearance, price, change, points: chart?.points });
+    const image = renderTokenCard({
+      theme: environment.appearance,
+      price,
+      change,
+      points: chart?.points,
+      isLoading: chartIsLoading,
+    });
     return `![${token.symbol}](${image})`;
-  }, [price, relativeChange, chart, token.symbol]);
+  }, [price, relativeChange, chart, chartIsLoading, token.symbol]);
 
   return (
     <List.Item.Detail

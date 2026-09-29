@@ -31,9 +31,10 @@ export function PerformanceView({ address, name }: { address: string; name?: str
       change,
       period,
       points: chart?.points,
+      isLoading: chartIsLoading,
     });
     return `![Performance](${image})`;
-  }, [portfolio, chart, change, period]);
+  }, [portfolio, chart, chartIsLoading, change, period]);
 
   const errorGate = useApiErrorGate(portfolioError || chartError);
   if (errorGate) {
