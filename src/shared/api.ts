@@ -152,6 +152,12 @@ export interface ApiChain {
     name: string;
     external_id?: string;
     icon: { url: string | null } | null;
+    explorer?: {
+      name: string;
+      token_url_format?: string;
+      tx_url_format?: string;
+      home_url?: string;
+    } | null;
   };
 }
 
@@ -162,4 +168,110 @@ export interface ApiChartAttributes {
   end_at: string;
   stats: { first: number; min: number; avg: number; max: number; last: number };
   points: [number, number][];
+}
+
+// Wallet charts omit `stats`; points are [unix seconds, usd value]
+export type ApiWalletChartAttributes = Omit<ApiChartAttributes, "stats">;
+
+export interface ApiQuantity {
+  int: string;
+  decimals: number;
+  float: number;
+  numeric: string;
+}
+
+export interface ApiFungibleInfo {
+  id?: string;
+  name: string;
+  symbol: string;
+  icon: { url: string | null } | null;
+  flags: { verified: boolean };
+  implementations: ApiFungibleImplementation[];
+}
+
+export interface ApiNftInfo {
+  contract_address: string;
+  token_id: string;
+  name: string;
+  interface: "erc721" | "erc1155";
+  content?: { preview?: { url: string }; detail?: { url: string } };
+  flags: { is_spam?: boolean };
+}
+
+export type ApiOperationType =
+  | "approve"
+  | "bid"
+  | "burn"
+  | "claim"
+  | "delegate"
+  | "deploy"
+  | "deposit"
+  | "execute"
+  | "mint"
+  | "receive"
+  | "revoke"
+  | "revoke_delegation"
+  | "send"
+  | "trade"
+  | "withdraw";
+
+export interface ApiTransaction {
+  type: string;
+  id: string;
+  attributes: {
+    operation_type: ApiOperationType;
+    hash: string;
+    mined_at_block: number;
+    mined_at: string;
+    sent_from: string;
+    sent_to: string;
+    status: "confirmed" | "failed" | "pending";
+    nonce: number;
+    fee: {
+      fungible_info: ApiFungibleInfo | null;
+      quantity: ApiQuantity;
+      price: number | null;
+      value: number | null;
+    } | null;
+    transfers: {
+      fungible_info?: ApiFungibleInfo;
+      nft_info?: ApiNftInfo;
+      direction: "in" | "out" | "self";
+      quantity: ApiQuantity;
+      value: number | null;
+      price: number | null;
+      sender: string;
+      recipient: string;
+      act_id: string;
+    }[];
+    approvals: {
+      fungible_info?: ApiFungibleInfo;
+      nft_info?: ApiNftInfo;
+      quantity: ApiQuantity;
+      sender: string;
+      act_id: string;
+    }[];
+    collection_approvals?: {
+      collection_info?: { id: string; name: string; icon_url: string };
+      cancelled: boolean;
+      spender: string;
+      act_id: string;
+    }[];
+    application_metadata?: {
+      name?: string;
+      icon?: { url: string | null } | null;
+      contract_address: string;
+      method?: { id?: string; name?: string };
+    };
+    flags?: { is_trash?: boolean };
+  };
+  relationships: {
+    chain: { data: { type: string; id: string } };
+    dapp?: { data: { type: string; id: string } };
+  };
+}
+
+export interface ApiTransactionsResponse {
+  links: { self: string; next?: string };
+  data: ApiTransaction[];
 }

@@ -7,7 +7,12 @@ async function fetchChains(): Promise<Record<string, ChainInfo>> {
   return Object.fromEntries(
     result.data.map((chain) => [
       chain.id,
-      { id: chain.id, name: chain.attributes.name, iconUrl: chain.attributes.icon?.url ?? null },
+      {
+        id: chain.id,
+        name: chain.attributes.name,
+        iconUrl: chain.attributes.icon?.url ?? null,
+        txUrlFormat: chain.attributes.explorer?.tx_url_format ?? null,
+      },
     ]),
   );
 }
@@ -22,5 +27,5 @@ export function useChains() {
 }
 
 export function getChainInfo(chainsById: Record<string, ChainInfo>, chainId: string): ChainInfo {
-  return chainsById[chainId] ?? { id: chainId, name: chainId, iconUrl: null };
+  return chainsById[chainId] ?? { id: chainId, name: chainId, iconUrl: null, txUrlFormat: null };
 }

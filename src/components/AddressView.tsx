@@ -19,6 +19,9 @@ import { AddressLine } from "../components/AddressLine";
 import { useWalletPositions } from "../shared/useWalletPositions";
 import { useWalletPortfolio } from "../shared/useWalletPortfolio";
 import { ApiErrorGate } from "./ApiKeyGate";
+import { useRecentTransactions } from "../shared/useWalletTransactions";
+import { TransactionItem } from "./TransactionItem";
+import { HistoryView } from "./HistoryView";
 
 function PositionsGroup({
   positions,
@@ -100,6 +103,74 @@ function PositionsGroup({
   );
 }
 
+function RecentActivity({
+  address,
+  chainFilter,
+  chains,
+  chainsById,
+}: {
+  address: string;
+  chainFilter: string;
+  chains: ChainInfo[];
+  chainsById: Record<string, ChainInfo>;
+}) {
+  const { transactions, isLoading } = useRecentTransactions({ address, chain: chainFilter });
+
+  if (!transactions) {
+    return isLoading ? <List.Section title="Recent Activity" /> : null;
+  }
+
+  return (
+    <List.Section title="Recent Activity">
+      {transactions.length === 0 ? (
+        <List.Item icon={Icon.Clock} title="No activity yet" keywords={["history", "activity", "transactions"]} />
+      ) : (
+        <>
+          {transactions.map((transaction) => (
+            <TransactionItem
+              key={transaction.id}
+              transaction={transaction}
+              walletAddress={address}
+              chainsById={chainsById}
+              dateStyle="relative"
+              detailAction={
+                <Action.Push
+                  title="Show Details"
+                  icon={Icon.Sidebar}
+                  shortcut={{ modifiers: ["cmd"], key: "d" }}
+                  target={
+                    <HistoryView
+                      address={address}
+                      chains={chains}
+                      initialChain={chainFilter}
+                      initialShowingDetail
+                      initialSelectedId={transaction.id}
+                    />
+                  }
+                />
+              }
+            />
+          ))}
+          <List.Item
+            icon={Icon.List}
+            title="View Full History"
+            keywords={["history", "activity", "transactions"]}
+            actions={
+              <ActionPanel>
+                <Action.Push
+                  title="View Full History"
+                  icon={Icon.List}
+                  target={<HistoryView address={address} chains={chains} initialChain={chainFilter} />}
+                />
+              </ActionPanel>
+            }
+          />
+        </>
+      )}
+    </List.Section>
+  );
+}
+
 export function AddressView({ addressOrDomain }: { addressOrDomain: string }) {
   const [chainFilter, setChainFilter] = useState(ALL_CHAINS);
   const { address, identity, isLoading } = useWalletIdentity(addressOrDomain);
@@ -141,6 +212,9 @@ export function AddressView({ addressOrDomain }: { addressOrDomain: string }) {
       searchBarAccessory={<ChainsSelector chains={chains} onChange={setChainFilter} />}
     >
       <AddressLine address={address || ""} identity={identity} onChangeSavedStatus={() => null} />
+      {address ? (
+        <RecentActivity address={address} chainFilter={chainFilter} chains={chains} chainsById={chainsById} />
+      ) : null}
       {sortedDappFrames.map(([protocol, positions]) =>
         positions ? (
           <PositionsGroup

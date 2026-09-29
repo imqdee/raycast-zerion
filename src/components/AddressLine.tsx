@@ -26,6 +26,10 @@ import {
 import { useWalletIdentity, type WalletIdentity } from "../shared/useWalletIdentity";
 import { useWalletPortfolio } from "../shared/useWalletPortfolio";
 import { normalizeAddress } from "../shared/NormalizedAddress";
+import { PerformanceView } from "./PerformanceView";
+import { useWalletChart } from "../shared/useWalletChart";
+import { DEFAULT_PERIOD } from "../shared/periods";
+import { renderSparkline } from "../shared/performanceChart";
 
 export function SafeAddressActions({
   address,
@@ -97,6 +101,14 @@ export function AddressLine({
     }
   }, [error]);
 
+  // Only fetched where Enter opens Performance; shares the cache with its default Period
+  const { chart } = useWalletChart({ address: action ? undefined : normalizedAddress, period: DEFAULT_PERIOD });
+  const performanceIcon = useMemo(() => {
+    const light = chart && renderSparkline({ theme: "light", points: chart.points });
+    const dark = chart && renderSparkline({ theme: "dark", points: chart.points });
+    return light && dark ? { source: { light, dark } } : Icon.LineChart;
+  }, [chart]);
+
   const keywords = useMemo(() => [normalizedAddress, identity?.ens].filter(Boolean) as string[], [identity]);
 
   const truncatedAddress = middleTruncate({ value: normalizedAddress, leadingLettersCount: 5 });
@@ -130,10 +142,18 @@ export function AddressLine({
                 : Color.Red,
           },
         },
+        // Without a custom primary action, Enter opens Performance — hint at it with a 1D sparkline
+        ...(action ? [] : [{ icon: performanceIcon, tooltip: "Press ↵ to show Performance" }]),
       ]}
       actions={
         <ActionPanel title="Actions">
           {action}
+          <Action.Push
+            title="Show Performance"
+            icon={Icon.LineChart}
+            shortcut={{ modifiers: ["cmd", "shift"], key: "p" }}
+            target={<PerformanceView address={normalizedAddress} name={name} />}
+          />
           <Action.OpenInBrowser
             url={`https://app.zerion.io/${normalizedAddress}`}
             title="Open in Zerion Web App"

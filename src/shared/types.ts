@@ -2,6 +2,8 @@ export interface ChainInfo {
   id: string;
   name: string;
   iconUrl: string | null;
+  /** Explorer transaction URL with a `{HASH}` placeholder. */
+  txUrlFormat: string | null;
 }
 
 export interface AddressPortfolio {
@@ -54,4 +56,52 @@ export interface SearchWallet {
   address: string;
   name: string | null;
   iconUrl: string | null;
+}
+
+export type OperationType = import("./api").ApiOperationType;
+
+export type TransactionStatus = "confirmed" | "failed" | "pending";
+
+export type TransferDirection = "in" | "out" | "self";
+
+export interface TransactionAsset {
+  /** Fungible symbol or NFT contract + token id; transfers of the same asset share it. */
+  id: string;
+  name: string;
+  symbol: string;
+  iconUrl: string | null;
+  isNft: boolean;
+}
+
+export interface TransactionTransfer {
+  asset: TransactionAsset;
+  direction: TransferDirection;
+  quantity: number;
+  value: number | null;
+  sender: string;
+  recipient: string;
+}
+
+export interface TransactionApproval {
+  asset: TransactionAsset;
+  quantity: number;
+  unlimited: boolean;
+}
+
+export interface Transaction {
+  id: string;
+  hash: string;
+  operationType: OperationType;
+  status: TransactionStatus;
+  chainId: string;
+  /** ISO 8601; kept as a string so cached pages survive JSON serialization. */
+  minedAt: string;
+  block: number;
+  nonce: number;
+  sentFrom: string;
+  sentTo: string;
+  fee: { asset: TransactionAsset | null; quantity: number; value: number | null } | null;
+  transfers: TransactionTransfer[];
+  approvals: TransactionApproval[];
+  dapp: { name: string; iconUrl: string | null; method: string | null } | null;
 }
