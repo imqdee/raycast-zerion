@@ -76,7 +76,21 @@ function MarketSection({ marketData }: { marketData: MarketData }) {
   );
 }
 
-function PnlSection({ pnl, isLoading, error }: { pnl?: TokenPnl; isLoading: boolean; error?: Error }) {
+function PnlSection({
+  pnl,
+  isLoading,
+  error,
+  unavailable,
+}: {
+  pnl?: TokenPnl;
+  isLoading: boolean;
+  error?: Error;
+  /** The token has no implementation on the selected chain, so no chain-scoped PnL exists */
+  unavailable: boolean;
+}) {
+  if (unavailable) {
+    return <List.Item.Detail.Metadata.Label title="PnL" text="Unavailable for this chain" icon={Icon.Info} />;
+  }
   if (error) {
     return <List.Item.Detail.Metadata.Label title="PnL" text="PnL unavailable" icon={Icon.Warning} />;
   }
@@ -147,6 +161,7 @@ export function TokenDetail({
     pnl,
     isLoading: pnlIsLoading,
     error: pnlError,
+    unavailable: pnlUnavailable,
   } = useTokenPnl({
     address: wallet?.address ?? "",
     fungibleId: token.id,
@@ -200,7 +215,7 @@ export function TokenDetail({
           {pnlEnabled ? (
             <>
               <List.Item.Detail.Metadata.Separator />
-              <PnlSection pnl={pnl} isLoading={pnlIsLoading} error={pnlError} />
+              <PnlSection pnl={pnl} isLoading={pnlIsLoading} error={pnlError} unavailable={pnlUnavailable} />
             </>
           ) : null}
           {marketData?.links.length ? (
