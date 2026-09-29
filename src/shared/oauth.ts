@@ -1,6 +1,6 @@
-import { OAuth, environment } from "@raycast/api";
+import { OAuth } from "@raycast/api";
 
-export const DASHBOARD_URL = environment.isDevelopment ? "http://localhost:5173" : "https://dashboard.zerion.io";
+export const DASHBOARD_URL = "https://dashboard.zerion.io";
 
 export const oauthClient = new OAuth.PKCEClient({
   redirectMethod: OAuth.RedirectMethod.Web,
