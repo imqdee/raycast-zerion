@@ -3,6 +3,16 @@ import { useFetch } from "@raycast/utils";
 import { API_URL, getApiHeaders, parseApiResponse, type ApiPosition } from "./api";
 import type { Position } from "./types";
 import { ALL_CHAINS } from "./constants";
+import { isSolanaAddress } from "./useWalletIdentity";
+
+/**
+ * The Zerion API rejects `filter[positions]=no_filter` (and `only_complex`) for
+ * Solana addresses with a 400, so for them we omit the parameter and let the
+ * API return its default (simple) positions.
+ */
+export function getPositionsFilter(address: string) {
+  return isSolanaAddress(address) ? "" : "&filter[positions]=no_filter";
+}
 
 export function mapPosition(position: ApiPosition): Position {
   const { attributes, relationships } = position;
@@ -22,6 +32,10 @@ export function mapPosition(position: ApiPosition): Position {
       symbol: attributes.fungible_info.symbol,
       iconUrl: attributes.fungible_info.icon?.url ?? null,
       verified: attributes.fungible_info.flags.verified,
+      implementations: (attributes.fungible_info.implementations ?? []).map((implementation) => ({
+        chainId: implementation.chain_id,
+        address: implementation.address ?? "",
+      })),
     },
   };
 }
@@ -38,7 +52,7 @@ export function useWalletPositions({ address, chain }: { address?: string; chain
     isLoading,
     error,
   } = useFetch<Position[]>(
-    `${API_URL}wallets/${address}/positions/?currency=usd&filter[positions]=no_filter&sort=-value${chainFilter}`,
+    `${API_URL}wallets/${address}/positions/?currency=usd${getPositionsFilter(address ?? "")}&sort=-value${chainFilter}`,
     useMemo(
       () => ({
         headers: getApiHeaders(),

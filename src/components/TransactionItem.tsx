@@ -262,12 +262,14 @@ export function TransactionItem({
       }
       actions={
         <ActionPanel title={display.title}>
+          {/* Enter reveals the drawer first; once it is open, Enter goes to the explorer */}
+          {isShowingDetail ? null : detailAction}
           <Action.OpenInBrowser
             url={explorerUrl}
             title={chain.txUrlFormat ? "Open in Explorer" : "Open in Zerion Web App"}
             icon={Icon.Globe}
           />
-          {detailAction}
+          {isShowingDetail ? detailAction : null}
           <Action.CopyToClipboard
             title="Copy Transaction Hash"
             content={transaction.hash}

@@ -88,6 +88,7 @@ export interface ApiFungibleImplementation {
   chain_id: string;
   address: string | null;
   decimals: number;
+  market_data?: { trading_volumes?: { volume_1d?: number } };
 }
 
 export interface ApiPosition {
@@ -135,6 +136,7 @@ export interface ApiFungible {
       circulating_supply?: number;
       fully_diluted_valuation?: number;
       market_cap?: number;
+      trading_volumes?: { volume_1d?: number };
       changes?: {
         percent_1d: number | null;
         percent_30d: number | null;
@@ -143,6 +145,42 @@ export interface ApiFungible {
       };
     };
   };
+}
+
+// FIFO-based gains; the same shape describes the whole wallet and each entry of `breakdown`
+export interface ApiPnlStats {
+  total_gain: number;
+  realized_gain: number;
+  unrealized_gain: number;
+  relative_total_gain_percentage: number;
+  relative_realized_gain_percentage: number;
+  relative_unrealized_gain_percentage: number;
+  total_invested: number;
+  net_invested: number;
+  realized_cost_basis: number;
+  total_fee: number;
+  received_external: number;
+  sent_external: number;
+  sent_for_nfts: number;
+  received_for_nfts: number;
+}
+
+export type ApiPnlBreakdownStats = ApiPnlStats & {
+  average_buy_price?: number | null;
+  average_sell_price?: number | null;
+};
+
+export interface ApiWalletPnlAttributes extends ApiPnlStats {
+  // Only present for implementation filters and multi-id requests
+  breakdown?: {
+    by_id?: Record<string, ApiPnlBreakdownStats>;
+    by_implementation?: Record<string, ApiPnlBreakdownStats>;
+  };
+}
+
+export interface ApiWalletPnlResponse {
+  data: { type: string; id: string; attributes: ApiWalletPnlAttributes };
+  meta?: { excluded_fungible_ids?: string[] };
 }
 
 export interface ApiChain {

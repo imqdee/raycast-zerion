@@ -10,6 +10,8 @@
 - Updated Raycast libraries, TypeScript, and ESLint to current versions
 - Fixed broken links in View Top Gainers, View Top Losers, and View Market
 - Added View Top Movers, View Trending Tokens, View Stocks, and View Perps commands
+- Added Token Details (⌘D) to Overview positions and Search Web3 tokens: 1D price chart, market data, and the wallet's PnL for that token
+- Enter on a position or transaction row now opens its details drawer; with the drawer open, Enter opens the token in the Zerion web app or the transaction in the explorer (⌘D still toggles the drawer)
 
 ## [Zerion AI Extension] - {PR_MERGE_DATE}
 

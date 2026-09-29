@@ -23,6 +23,8 @@ export interface PositionAsset {
   symbol: string;
   iconUrl: string | null;
   verified: boolean;
+  /** Where the token lives per chain; native coins have an empty address. */
+  implementations: { chainId: string; address: string }[];
 }
 
 export interface Position {

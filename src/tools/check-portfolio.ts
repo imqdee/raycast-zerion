@@ -1,6 +1,7 @@
 import { withAccessToken } from "@raycast/utils";
 import { apiFetch, type ApiPortfolioAttributes, type ApiPosition } from "../shared/api";
 import { resolveIdentity } from "../shared/useWalletIdentity";
+import { getPositionsFilter } from "../shared/useWalletPositions";
 import { zerionOAuth } from "../shared/oauth";
 
 type Input = {
@@ -26,7 +27,7 @@ async function tool(input: Input) {
       `wallets/${address}/portfolio?currency=usd&filter[positions]=no_filter`,
     ),
     apiFetch<{ data: ApiPosition[] }>(
-      `wallets/${address}/positions/?currency=usd&filter[positions]=no_filter&sort=-value`,
+      `wallets/${address}/positions/?currency=usd${getPositionsFilter(address)}&sort=-value`,
     ),
   ]);
 

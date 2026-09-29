@@ -36,6 +36,18 @@ A movement of an asset (token or NFT) into or out of the wallet within an Act, w
 **Approval**:
 A spending permission granted (or revoked) for an asset within an Act.
 
+**Token Details**:
+The side panel for one token, opened with ⌘D from a position on the Wallet Overview or a token in Search Web3. Shows the token's 1D price chart, its Market Data, the position it was opened from and, on the Wallet Overview, the wallet's Token PnL.
+_Avoid_: Asset detail, token page, fungible details
+
+**Market Data**:
+A token's market figures: price, 24h change, market cap, fully diluted valuation, 24h volume, circulating and total supply, and 30d/90d/1y changes.
+_Avoid_: Stats, token info
+
+**Token PnL**:
+A wallet's profit and loss for one token: total, realized and unrealized gain, and total and net invested. Covers every position of that token in the wallet, not one row.
+_Avoid_: Performance (that is the wallet value chart), returns
+
 ## Relationships
 
 - A **Wallet Overview** shows one **Recent Activity** preview, which links to that wallet's **History**
@@ -43,3 +55,5 @@ A spending permission granted (or revoked) for an asset within an Act.
 - A **Performance** screen shows exactly one **Period** at a time
 - **Recent Activity** and **History** follow the Wallet Overview's chain filter; neither ever shows trash Transactions
 - **History** lists **Transactions**; a **Transaction** has one or more **Acts**; each **Act** has zero or more **Transfers** and **Approvals**
+- A **Wallet Overview** position and a Search Web3 token each open **Token Details**; only the Wallet Overview one includes **Token PnL**
+- **Token PnL** follows the Wallet Overview's chain filter, like Recent Activity and History

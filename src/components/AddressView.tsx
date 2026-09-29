@@ -1,6 +1,6 @@
 import { List, Color, Icon, Image, ActionPanel, Action } from "@raycast/api";
 import capitalize from "lodash/capitalize";
-import { useMemo, useState } from "react";
+import { useMemo, useState, type ReactNode } from "react";
 import type { AggregatedPosition, ChainInfo, Position } from "../shared/types";
 import {
   DEFAULT_DAPP_ID,
@@ -22,17 +22,26 @@ import { ApiErrorGate } from "./ApiKeyGate";
 import { useRecentTransactions } from "../shared/useWalletTransactions";
 import { TransactionItem } from "./TransactionItem";
 import { HistoryView } from "./HistoryView";
+import { TokenDetail } from "./TokenDetail";
 
 function PositionsGroup({
   positions,
   protocol,
   address,
+  chainFilter,
   chainsById,
+  isShowingDetail,
+  selectedId,
+  detailAction,
 }: {
   positions: Position[];
   protocol: string;
   address: string;
+  chainFilter: string;
   chainsById: Record<string, ChainInfo>;
+  isShowingDetail: boolean;
+  selectedId: string | null;
+  detailAction: ReactNode;
 }) {
   const fullValue = useMemo(() => getFullPositionsValue(positions), [positions]);
   const sortedPositions = useMemo(
@@ -49,13 +58,20 @@ function PositionsGroup({
         const relativeChange = item.relativeChange24h || 0;
         const absoluteChange = Math.abs(((relativeChange / 100) * getPositionValue(item)) / (1 + relativeChange / 100));
         const chain = getChainInfo(chainsById, item.chainId);
-        return (
-          <List.Item
-            key={item.id}
-            title={item.asset.name}
-            icon={{ source: item.asset.iconUrl || Icon.Circle, mask: Image.Mask.Circle }}
-            subtitle={item.type !== "wallet" ? item.type : undefined}
-            accessories={[
+        const chains = "chainIds" in item ? item.chainIds.map((id) => getChainInfo(chainsById, id)) : [chain];
+        // Section keys repeat a token across dapps, so the row id carries the section too
+        const rowId = `${protocol}:${item.id}`;
+        const changeAccessory = {
+          text: {
+            value: item.value
+              ? `${relativeChange.toFixed()}% ($${Math.abs(absoluteChange || 0).toFixed(2)})`
+              : "0% ($0.00)",
+            color: !absoluteChange ? Color.SecondaryText : relativeChange > 0 ? Color.Green : Color.Red,
+          },
+        };
+        const accessories = isShowingDetail
+          ? [changeAccessory]
+          : [
               {
                 icon: Icon.Coins,
                 text: {
@@ -63,21 +79,14 @@ function PositionsGroup({
                 },
               },
               { text: { value: `$${Number(item.value ?? 0).toFixed(2)}`, color: Color.PrimaryText } },
-              {
-                text: {
-                  value: item.value
-                    ? `${relativeChange.toFixed()}% ($${Math.abs(absoluteChange || 0).toFixed(2)})`
-                    : "0% ($0.00)",
-                  color: !absoluteChange ? Color.SecondaryText : relativeChange > 0 ? Color.Green : Color.Red,
-                },
-              },
-              "chainIds" in item && item.chainIds.length > 1
+              changeAccessory,
+              chains.length > 1
                 ? {
                     icon: {
                       source: Icon.PieChart,
                       mask: Image.Mask.RoundedRectangle,
                     },
-                    tooltip: item.chainIds.map((id) => getChainInfo(chainsById, id).name).join(),
+                    tooltip: chains.map(({ name }) => name).join(),
                   }
                 : {
                     icon: {
@@ -86,14 +95,41 @@ function PositionsGroup({
                     },
                     tooltip: chain.name,
                   },
-            ]}
+            ];
+        return (
+          <List.Item
+            key={rowId}
+            id={rowId}
+            title={item.asset.name}
+            icon={{ source: item.asset.iconUrl || Icon.Circle, mask: Image.Mask.Circle }}
+            subtitle={item.type !== "wallet" ? item.type : undefined}
+            accessories={accessories}
+            detail={
+              isShowingDetail ? (
+                <TokenDetail
+                  token={{
+                    id: item.asset.id,
+                    symbol: item.asset.symbol,
+                    price: item.price,
+                    relativeChange1d: item.relativeChange24h,
+                    implementations: item.asset.implementations,
+                  }}
+                  isActive={selectedId === rowId}
+                  position={{ quantity: getPositionBalance(item), value: item.value, chains }}
+                  wallet={{ address, chain: chainFilter }}
+                />
+              ) : undefined
+            }
             actions={
               <ActionPanel title="Actions">
+                {/* Enter reveals the drawer first; once it is open, Enter goes to the web app */}
+                {isShowingDetail ? null : detailAction}
                 <Action.OpenInBrowser
                   url={`https://app.zerion.io/tokens/${item.asset.id}?address=${address}`}
                   title="Open in Zerion Web App"
                   icon={Icon.Globe}
                 />
+                {isShowingDetail ? detailAction : null}
               </ActionPanel>
             }
           />
@@ -108,11 +144,15 @@ function RecentActivity({
   chainFilter,
   chains,
   chainsById,
+  isShowingDetail,
+  detailAction,
 }: {
   address: string;
   chainFilter: string;
   chains: ChainInfo[];
   chainsById: Record<string, ChainInfo>;
+  isShowingDetail: boolean;
+  detailAction: ReactNode;
 }) {
   const { transactions, isLoading } = useRecentTransactions({ address, chain: chainFilter });
 
@@ -133,22 +173,8 @@ function RecentActivity({
               walletAddress={address}
               chainsById={chainsById}
               dateStyle="relative"
-              detailAction={
-                <Action.Push
-                  title="Show Details"
-                  icon={Icon.Sidebar}
-                  shortcut={{ modifiers: ["cmd"], key: "d" }}
-                  target={
-                    <HistoryView
-                      address={address}
-                      chains={chains}
-                      initialChain={chainFilter}
-                      initialShowingDetail
-                      initialSelectedId={transaction.id}
-                    />
-                  }
-                />
-              }
+              isShowingDetail={isShowingDetail}
+              detailAction={detailAction}
             />
           ))}
           <List.Item
@@ -162,6 +188,7 @@ function RecentActivity({
                   icon={Icon.List}
                   target={<HistoryView address={address} chains={chains} initialChain={chainFilter} />}
                 />
+                {detailAction}
               </ActionPanel>
             }
           />
@@ -173,6 +200,9 @@ function RecentActivity({
 
 export function AddressView({ addressOrDomain }: { addressOrDomain: string }) {
   const [chainFilter, setChainFilter] = useState(ALL_CHAINS);
+  const [isShowingDetail, setIsShowingDetail] = useState(false);
+  // Token Details only fetch for the selected row, so the list tracks it
+  const [selectedId, setSelectedId] = useState<string | null>(null);
   const { address, identity, isLoading } = useWalletIdentity(addressOrDomain);
   const { chainsById, isLoading: chainsAreLoading, error: chainsError } = useChains();
   const { portfolio, isLoading: portfolioIsLoading, error: portfolioError } = useWalletPortfolio({ address });
@@ -205,15 +235,33 @@ export function AddressView({ addressOrDomain }: { addressOrDomain: string }) {
     return errorGate;
   }
 
+  const toggleDetailAction = (
+    <Action
+      title={isShowingDetail ? "Hide Details" : "Show Details"}
+      icon={Icon.Sidebar}
+      shortcut={{ modifiers: ["cmd"], key: "d" }}
+      onAction={() => setIsShowingDetail((value) => !value)}
+    />
+  );
+
   return (
     <List
       searchBarPlaceholder="Filter Tokens"
       isLoading={isLoading || positionsAreLoading || portfolioIsLoading || chainsAreLoading}
+      isShowingDetail={isShowingDetail}
+      onSelectionChange={setSelectedId}
       searchBarAccessory={<ChainsSelector chains={chains} onChange={setChainFilter} />}
     >
       <AddressLine address={address || ""} identity={identity} onChangeSavedStatus={() => null} />
       {address ? (
-        <RecentActivity address={address} chainFilter={chainFilter} chains={chains} chainsById={chainsById} />
+        <RecentActivity
+          address={address}
+          chainFilter={chainFilter}
+          chains={chains}
+          chainsById={chainsById}
+          isShowingDetail={isShowingDetail}
+          detailAction={toggleDetailAction}
+        />
       ) : null}
       {sortedDappFrames.map(([protocol, positions]) =>
         positions ? (
@@ -222,7 +270,11 @@ export function AddressView({ addressOrDomain }: { addressOrDomain: string }) {
             address={address || ""}
             positions={positions}
             protocol={protocol}
+            chainFilter={chainFilter}
             chainsById={chainsById}
+            isShowingDetail={isShowingDetail}
+            selectedId={selectedId}
+            detailAction={toggleDetailAction}
           />
         ) : null,
       )}
