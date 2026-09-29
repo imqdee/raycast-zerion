@@ -4,10 +4,7 @@
   "title": "Zerion",
   "description": "Browse Zerion from Raycast",
   "icon": "zerion_icon.png",
-  "author": "imqdee",
-  "contributors": [
-    "zerts"
-  ],
+  "author": "zerts",
   "categories": [
     "Web",
     "Productivity",
