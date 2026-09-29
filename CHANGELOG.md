@@ -1,5 +1,13 @@
 # Zerion Changelog
 
+## [Public Zerion API] - {PR_MERGE_DATE}
+- Moved all data fetching to the public Zerion API (api.zerion.io) with a personal API key
+- Added Sign in with Zerion: the first command you run opens a browser consent page at dashboard.zerion.io and connects a free API key automatically — no manual setup
+- ENS names and avatars are now resolved via public ENS infrastructure
+- Removed the Zerion membership badges (Level, Premium) that relied on the internal API
+- Removed the AI tools for generating swap/send links
+- Updated Raycast libraries, TypeScript, and ESLint to current versions
+
 ## [Zerion AI Extension] - {PR_MERGE_DATE}
 - Analyze token stats, info and historical prices
 - Analyze wallet portfolio

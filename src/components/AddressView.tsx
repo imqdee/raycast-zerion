@@ -1,7 +1,7 @@
 import { List, Color, Icon, Image, ActionPanel, Action } from "@raycast/api";
 import capitalize from "lodash/capitalize";
 import { useMemo, useState } from "react";
-import type { AggregatedPosition, Position } from "../shared/types";
+import type { AggregatedPosition, ChainInfo, Position } from "../shared/types";
 import {
   DEFAULT_DAPP_ID,
   getFullPositionsValue,
@@ -11,21 +11,25 @@ import {
   groupPositionsByToken,
   sortPositionGroupsByTotalValue,
 } from "../shared/utils";
-import { ALL_CHAINS, ZERO_CHAIN_CONFIG } from "../shared/constants";
-import { useWalletMetadata } from "../shared/useWalletMetadata";
+import { ALL_CHAINS } from "../shared/constants";
+import { useWalletIdentity } from "../shared/useWalletIdentity";
+import { useChains, getChainInfo } from "../shared/useChains";
 import { ChainsSelector } from "../components/NetworkSelect";
 import { AddressLine } from "../components/AddressLine";
 import { useWalletPositions } from "../shared/useWalletPositions";
 import { useWalletPortfolio } from "../shared/useWalletPortfolio";
+import { ApiErrorGate } from "./ApiKeyGate";
 
 function PositionsGroup({
   positions,
   protocol,
   address,
+  chainsById,
 }: {
   positions: Position[];
   protocol: string;
   address: string;
+  chainsById: Record<string, ChainInfo>;
 }) {
   const fullValue = useMemo(() => getFullPositionsValue(positions), [positions]);
   const sortedPositions = useMemo(
@@ -39,14 +43,15 @@ function PositionsGroup({
   return (
     <List.Section title={capitalize(protocol)} subtitle={`$${fullValue.toFixed(2)}`}>
       {sortedPositions.map((item) => {
-        const relativeChange = item.asset.price?.relativeChange24h || 0;
+        const relativeChange = item.relativeChange24h || 0;
         const absoluteChange = Math.abs(((relativeChange / 100) * getPositionValue(item)) / (1 + relativeChange / 100));
+        const chain = getChainInfo(chainsById, item.chainId);
         return (
           <List.Item
             key={item.id}
             title={item.asset.name}
             icon={{ source: item.asset.iconUrl || Icon.Circle, mask: Image.Mask.Circle }}
-            subtitle={item.type !== "asset" ? item.type : undefined}
+            subtitle={item.type !== "wallet" ? item.type : undefined}
             accessories={[
               {
                 icon: Icon.Coins,
@@ -54,7 +59,7 @@ function PositionsGroup({
                   value: `${getPositionBalance(item).toFixed(2)} ${item.asset.symbol}`,
                 },
               },
-              { text: { value: `$${Number(item.value)?.toFixed(2)}` || "", color: Color.PrimaryText } },
+              { text: { value: `$${Number(item.value ?? 0).toFixed(2)}`, color: Color.PrimaryText } },
               {
                 text: {
                   value: item.value
@@ -63,20 +68,20 @@ function PositionsGroup({
                   color: !absoluteChange ? Color.SecondaryText : relativeChange > 0 ? Color.Green : Color.Red,
                 },
               },
-              "chains" in item && item.chains.length > 1
+              "chainIds" in item && item.chainIds.length > 1
                 ? {
                     icon: {
                       source: Icon.PieChart,
                       mask: Image.Mask.RoundedRectangle,
                     },
-                    tooltip: item.chains.map(({ name }) => name).join(),
+                    tooltip: item.chainIds.map((id) => getChainInfo(chainsById, id).name).join(),
                   }
                 : {
                     icon: {
-                      source: item.chain.iconUrl || Icon.ComputerChip,
+                      source: chain.iconUrl || Icon.ComputerChip,
                       mask: Image.Mask.RoundedRectangle,
                     },
-                    tooltip: item.chain.name,
+                    tooltip: chain.name,
                   },
             ]}
             actions={
@@ -97,9 +102,14 @@ function PositionsGroup({
 
 export function AddressView({ addressOrDomain }: { addressOrDomain: string }) {
   const [chainFilter, setChainFilter] = useState(ALL_CHAINS);
-  const { address, walletMetadata, isLoading } = useWalletMetadata(addressOrDomain);
-  const { portfolio, isLoading: portfolioIsLoading } = useWalletPortfolio({ address });
-  const { positions, isLoading: positionsAreLoading } = useWalletPositions({ address, chain: chainFilter });
+  const { address, identity, isLoading } = useWalletIdentity(addressOrDomain);
+  const { chainsById, isLoading: chainsAreLoading, error: chainsError } = useChains();
+  const { portfolio, isLoading: portfolioIsLoading, error: portfolioError } = useWalletPortfolio({ address });
+  const {
+    positions,
+    isLoading: positionsAreLoading,
+    error: positionsError,
+  } = useWalletPositions({ address, chain: chainFilter });
 
   const groupedPositions = useMemo(() => {
     if (!positions) {
@@ -112,32 +122,34 @@ export function AddressView({ addressOrDomain }: { addressOrDomain: string }) {
     if (!portfolio) {
       return [];
     }
-    const ids = new Set<string>(Object.keys(portfolio.positionsChainsDistribution));
-    ids.add(ZERO_CHAIN_CONFIG.id);
-
-    return Array.from(ids)
-      .sort((a, b) =>
-        a === ZERO_CHAIN_CONFIG.id
-          ? -1
-          : b === ZERO_CHAIN_CONFIG.id
-            ? 1
-            : portfolio.positionsChainsDistribution[b] - portfolio.positionsChainsDistribution[a],
-      )
-      .map((id) => (id === ZERO_CHAIN_CONFIG.id ? ZERO_CHAIN_CONFIG : portfolio?.chains[id]));
-  }, [portfolio]);
+    return Object.keys(portfolio.positionsChainsDistribution)
+      .sort((a, b) => portfolio.positionsChainsDistribution[b] - portfolio.positionsChainsDistribution[a])
+      .map((id) => getChainInfo(chainsById, id));
+  }, [portfolio, chainsById]);
 
   const sortedDappFrames = useMemo(() => sortPositionGroupsByTotalValue(groupedPositions), [groupedPositions]);
+
+  const errorGate = ApiErrorGate({ error: portfolioError || positionsError || chainsError });
+  if (errorGate) {
+    return errorGate;
+  }
 
   return (
     <List
       searchBarPlaceholder="Filter Tokens"
-      isLoading={isLoading || positionsAreLoading || portfolioIsLoading}
+      isLoading={isLoading || positionsAreLoading || portfolioIsLoading || chainsAreLoading}
       searchBarAccessory={<ChainsSelector chains={chains} onChange={setChainFilter} />}
     >
-      <AddressLine address={address || ""} walletMetadata={walletMetadata} onChangeSavedStatus={() => null} />
+      <AddressLine address={address || ""} identity={identity} onChangeSavedStatus={() => null} />
       {sortedDappFrames.map(([protocol, positions]) =>
         positions ? (
-          <PositionsGroup key={protocol} address={address || ""} positions={positions} protocol={protocol} />
+          <PositionsGroup
+            key={protocol}
+            address={address || ""}
+            positions={positions}
+            protocol={protocol}
+            chainsById={chainsById}
+          />
         ) : null,
       )}
     </List>

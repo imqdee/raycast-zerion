@@ -1,6 +1,5 @@
 import { usePromise } from "@raycast/utils";
-import { WalletMetadata } from "../shared/types";
-import { useMemo } from "react";
+import { useEffect, useMemo } from "react";
 import {
   Icon,
   List,
@@ -24,7 +23,7 @@ import {
   removeMenuBarAddress,
   setMenuBarAddress,
 } from "../shared/utils";
-import { useWalletMetadata } from "../shared/useWalletMetadata";
+import { useWalletIdentity, type WalletIdentity } from "../shared/useWalletIdentity";
 import { useWalletPortfolio } from "../shared/useWalletPortfolio";
 import { normalizeAddress } from "../shared/NormalizedAddress";
 
@@ -75,62 +74,50 @@ export function SafeAddressActions({
 
 export function AddressLine({
   address,
-  walletMetadata,
+  identity,
   action,
   onChangeSavedStatus,
+  onApiError,
 }: {
   address: string;
-  walletMetadata?: WalletMetadata;
+  identity?: WalletIdentity;
   action?: React.ReactNode;
   onChangeSavedStatus(): void;
+  /** Lets list views without their own API requests (My Wallets) show the auth/quota gate. */
+  onApiError?(error: unknown): void;
 }) {
   const normalizedAddress = normalizeAddress(address);
   const { data: menuBarAddress, revalidate: revalidateMenuBarAddress } = usePromise(getMenuBarAddress);
 
-  const { portfolio, isLoading: portfolioIsLoading } = useWalletPortfolio({ address: normalizedAddress });
+  const { portfolio, isLoading: portfolioIsLoading, error } = useWalletPortfolio({ address: normalizedAddress });
 
-  const keywords = useMemo(
-    () =>
-      [
-        normalizedAddress,
-        walletMetadata?.membership.premium ? "Premium" : "",
-        ...(walletMetadata?.identities.map((item) => item.handle) || []),
-      ].filter(Boolean),
-    [walletMetadata],
-  );
+  useEffect(() => {
+    if (error) {
+      onApiError?.(error);
+    }
+  }, [error]);
+
+  const keywords = useMemo(() => [normalizedAddress, identity?.ens].filter(Boolean) as string[], [identity]);
 
   const truncatedAddress = middleTruncate({ value: normalizedAddress, leadingLettersCount: 5 });
 
-  if (portfolioIsLoading || !walletMetadata) {
+  if (portfolioIsLoading) {
     return <List.Item icon={Icon.Wallet} title={truncatedAddress} />;
   }
 
-  const name = walletMetadata.identities[0]?.handle;
+  const name = identity?.ens;
 
   return (
     <List.Item
       icon={{
-        source: walletMetadata.nft?.metadata?.content?.imagePreviewUrl || Icon.Wallet,
+        source: identity?.avatarUrl || Icon.Wallet,
         mask: Image.Mask.RoundedRectangle,
       }}
       keywords={keywords}
       title={name || truncatedAddress}
       subtitle={name ? truncatedAddress : undefined}
       accessories={[
-        {
-          tag: { value: `Level ${walletMetadata.membership.level}`, color: Color.Magenta },
-          tooltip: "Rewards Level",
-        },
-        walletMetadata.membership.premium
-          ? {
-              icon: { source: Icon.StarCircle, mask: Image.Mask.RoundedRectangle, tintColor: Color.Purple },
-              tooltip: "Premium",
-            }
-          : {},
-        ...walletMetadata.identities.slice(1).map((identity) => ({
-          tag: { value: identity.handle },
-        })),
-        { text: { value: `$${Number(portfolio?.totalValue)?.toFixed(2)}` || "" } },
+        { text: { value: `$${Number(portfolio?.totalValue ?? 0).toFixed(2)}` } },
         {
           text: {
             value: portfolio?.totalValue
@@ -162,7 +149,7 @@ export function AddressLine({
                 })
               }
               style={Action.Style.Destructive}
-              title="Remove From Menu Bar"
+              title="Remove from Menu Bar"
             />
           ) : (
             <Action
@@ -187,18 +174,21 @@ export function AddressLineByAddress({
   address,
   action,
   onChangeSavedStatus,
+  onApiError,
 }: {
   address: string;
   action?: React.ReactNode;
   onChangeSavedStatus(): void;
+  onApiError?(error: unknown): void;
 }) {
-  const { walletMetadata } = useWalletMetadata(address);
+  const { identity } = useWalletIdentity(address);
   return (
     <AddressLine
       address={address}
-      walletMetadata={walletMetadata}
+      identity={identity}
       action={action}
       onChangeSavedStatus={onChangeSavedStatus}
+      onApiError={onApiError}
     />
   );
 }

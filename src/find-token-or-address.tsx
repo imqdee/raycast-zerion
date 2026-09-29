@@ -6,7 +6,10 @@ import { useSearch } from "./shared/useSearch";
 import { middleTruncate } from "./shared/utils";
 import { AddressView } from "./components/AddressView";
 import { SafeAddressActions } from "./components/AddressLine";
+import { withAccessToken } from "@raycast/utils";
+import { ApiErrorGate } from "./components/ApiKeyGate";
 import { normalizeAddress } from "./shared/NormalizedAddress";
+import { zerionOAuth } from "./shared/oauth";
 
 function AssetLine({ asset }: { asset: SearchAsset }) {
   return (
@@ -15,11 +18,11 @@ function AssetLine({ asset }: { asset: SearchAsset }) {
       icon={{ source: asset.iconUrl || Icon.Circle, mask: Image.Mask.Circle }}
       subtitle={asset.symbol}
       accessories={[
-        { text: { value: `$${asset.meta.price ? Number(asset.meta.price).toFixed(2) : "0.00"}` } },
+        { text: { value: `$${asset.price ? Number(asset.price).toFixed(2) : "0.00"}` } },
         {
           text: {
-            value: `${asset.meta.relativeChange1d ? asset.meta.relativeChange1d.toFixed() : 0}%`,
-            color: (asset.meta.relativeChange1d || 0) >= 0 ? Color.Green : Color.Red,
+            value: `${asset.relativeChange1d ? asset.relativeChange1d.toFixed() : 0}%`,
+            color: (asset.relativeChange1d || 0) >= 0 ? Color.Green : Color.Red,
           },
         },
       ]}
@@ -45,8 +48,8 @@ function WalletLine({ wallet }: { wallet: SearchWallet }) {
   return (
     <List.Item
       icon={{ source: wallet.iconUrl || Icon.Wallet, mask: Image.Mask.RoundedRectangle }}
-      title={wallet.name === normalizedAddress ? truncatedAddress : wallet.name}
-      subtitle={wallet.name === normalizedAddress ? undefined : truncatedAddress}
+      title={wallet.name || truncatedAddress}
+      subtitle={wallet.name ? truncatedAddress : undefined}
       actions={
         <ActionPanel title="Actions">
           <Action
@@ -66,10 +69,15 @@ function WalletLine({ wallet }: { wallet: SearchWallet }) {
   );
 }
 
-export default function Command(props: LaunchProps) {
+function Command(props: LaunchProps) {
   const [query, setQuery] = useState(props.arguments.query);
 
-  const { tokens, wallets, isLoading } = useSearch(query);
+  const { tokens, wallets, isLoading, error } = useSearch(query);
+
+  const errorGate = ApiErrorGate({ error });
+  if (errorGate) {
+    return errorGate;
+  }
 
   const isEmpty = !isLoading && !tokens?.length && !wallets?.length;
 
@@ -108,3 +116,5 @@ export default function Command(props: LaunchProps) {
     </List>
   );
 }
+
+export default withAccessToken(zerionOAuth)(Command);
